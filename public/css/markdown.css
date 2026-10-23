@@ -1,0 +1,134 @@
+/**
+ * Minimal Effort Markdown - styles
+ * Uses GLPI/Tabler CSS variables only, so it follows light and dark themes.
+ * (Previous versions overrode :root Bootstrap variables, which broke dark themes.)
+ */
+
+.markdown-toggle-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .25rem 1rem;
+    margin-bottom: .5rem;
+    padding: .35rem .6rem;
+    border: 1px solid var(--tblr-border-color, var(--bs-border-color, #dee2e6));
+    border-radius: var(--tblr-border-radius, 4px);
+    background: transparent;
+}
+
+.markdown-toggle-container .form-check-label {
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.markdown-toggle-container .markdown-help {
+    font-size: .75rem;
+}
+
+.markdown-textarea {
+    width: 100%;
+    min-height: 12rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: .875rem;
+    line-height: 1.5;
+    tab-size: 4;
+    resize: vertical;
+}
+
+/* Readable rendering of markdown-generated HTML in KB / timeline */
+.rich_text_container table.table,
+.kb-answer table.table,
+.timeline-content table.table {
+    width: auto;
+    max-width: 100%;
+}
+
+.rich_text_container pre,
+.timeline-content pre,
+.kb-answer pre,
+.memd-code-wrap > pre {
+    padding: .75rem;
+    border-radius: 4px;
+    /* explicit pair: some dark palettes (e.g. "darker") make surface-secondary
+       the same grey as the text, which hid code completely */
+    background: color-mix(in srgb, var(--tblr-body-color, #1d273b) 8%, transparent);
+    color: var(--tblr-body-color, #1d273b);
+    border: 1px solid var(--tblr-border-color, rgba(127, 127, 127, .25));
+    overflow-x: auto;
+}
+
+.rich_text_container pre code,
+.timeline-content pre code,
+.kb-answer pre code,
+.memd-code-wrap pre code {
+    color: inherit;
+    background: transparent;
+}
+
+/* One-click copy on code blocks */
+.memd-code-wrap {
+    position: relative;
+}
+
+.memd-code-wrap > pre {
+    padding-right: 5.5rem;
+}
+
+.memd-copy-btn {
+    position: absolute;
+    top: .4rem;
+    right: .4rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .15rem .5rem;
+    font-size: .75rem;
+    line-height: 1.4;
+    color: var(--tblr-body-color, #1d273b);
+    background: var(--tblr-bg-surface, #fff);
+    border: 1px solid var(--tblr-border-color, #dce1e7);
+    border-radius: 4px;
+    opacity: .75;
+    cursor: pointer;
+    transition: opacity .15s;
+}
+
+.memd-code-wrap:hover .memd-copy-btn,
+.memd-copy-btn:focus-visible {
+    opacity: 1;
+}
+
+.memd-copy-btn.copied {
+    color: var(--tblr-success, #2fb344);
+    border-color: var(--tblr-success, #2fb344);
+}
+
+
+/* Callouts: > [!summary] Title  (Obsidian) / > [!NOTE] (GitHub)
+   Icons use GLPI's own bundled Tabler icon font (served locally by GLPI, no network). */
+.memd-callout > .memd-callout-title::before {
+    font-family: "tabler-icons";
+    font-weight: 400;
+    font-style: normal;
+    margin-right: .4rem;
+    vertical-align: -0.1em;
+    content: "\ec9c"; /* pin: unknown types */
+}
+details.memd-callout > summary.memd-callout-title {
+    list-style-position: inside;
+}
+.memd-callout-note > .memd-callout-title::before { content: "\eb6d"; }
+.memd-callout-abstract > .memd-callout-title::before { content: "\ea6d"; }
+.memd-callout-info > .memd-callout-title::before { content: "\eac5"; }
+.memd-callout-todo > .memd-callout-title::before { content: "\eba6"; }
+.memd-callout-tip > .memd-callout-title::before { content: "\ea51"; }
+.memd-callout-important > .memd-callout-title::before { content: "\f810"; }
+.memd-callout-success > .memd-callout-title::before { content: "\ea67"; }
+.memd-callout-question > .memd-callout-title::before { content: "\f91d"; }
+.memd-callout-warning > .memd-callout-title::before { content: "\ea06"; }
+.memd-callout-caution > .memd-callout-title::before { content: "\ecc6"; }
+.memd-callout-failure > .memd-callout-title::before { content: "\ea6a"; }
+.memd-callout-danger > .memd-callout-title::before { content: "\ea2e"; }
+.memd-callout-bug > .memd-callout-title::before { content: "\ea48"; }
+.memd-callout-example > .memd-callout-title::before { content: "\ef40"; }
+.memd-callout-quote > .memd-callout-title::before { content: "\efbe"; }

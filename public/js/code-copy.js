@@ -47,8 +47,10 @@
 
     function decorate(pre) {
         if (pre.dataset.memdCopy) return;
-        // not inside editors / our markdown textarea / editable areas
-        if (pre.closest('.tox, .tox-tinymce, [contenteditable="true"], textarea')) return;
+        // not inside editors / our markdown textarea / editable areas.
+        // #kb-tiptap-editor / .ProseMirror = GLPI 12 KB: Tiptap takes over that DOM
+        // (even before it initialises), so a button there would become article text.
+        if (pre.closest('.tox, .tox-tinymce, #kb-tiptap-editor, .ProseMirror, [contenteditable="true"], textarea')) return;
         pre.dataset.memdCopy = '1';
 
         const wrap = document.createElement('div');

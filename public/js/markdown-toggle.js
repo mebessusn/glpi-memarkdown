@@ -152,6 +152,21 @@
                 turndown.use(window.turndownPluginGfm.gfm);
             }
             addCalloutRule(turndown);
+            turndown.addRule('tightListItem', {
+                filter: 'li',
+                replacement: function (content, node, options) {
+                    content = content.replace(/^\n+/, '').replace(/\n+$/, '\n')
+                        .replace(/^(\[[ xX]\]) {2,}/, '$1 '); // task list: "[ ]  x" -> "[ ] x"
+                    const parent = node.parentNode;
+                    let prefix = options.bulletListMarker + ' ';
+                    if (parent.nodeName === 'OL') {
+                        const start = parseInt(parent.getAttribute('start') || '1', 10);
+                        prefix = (start + Array.prototype.indexOf.call(parent.children, node)) + '. ';
+                    }
+                    content = content.replace(/\n/gm, '\n' + ' '.repeat(prefix.length));
+                    return prefix + content + (node.nextSibling && !/\n$/.test(content) ? '\n' : '');
+                },
+            });
             // keep the language of fenced blocks (<pre><code class="language-bash">)
             turndown.addRule('fencedWithLang', {
                 filter: function (node) {
@@ -167,7 +182,45 @@
         }
         // TinyMCE hands back absolute URLs; keep links to this GLPI server relative
         const origin = window.location.origin;
-        return turndown.turndown(html || '').split('](' + origin + '/').join('](/');
+        return turndown.turndown(tidyTables(html || '')).split('](' + origin + '/').join('](/');
+    }
+
+    /**
+     * Editors (GLPI 12's Tiptap especially) wrap table cells and list items in
+     * <p> and add a <colgroup>, which makes the GFM converter keep tables as raw
+     * HTML and lists loose. Strip those so they come back as clean markdown.
+     */
+    function tidyTables(html) {
+        if (html.indexOf('<table') === -1 && html.indexOf('<li') === -1) return html;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        // <li><p>text</p></li> (Tiptap) -> <li>text</li>, so lists stay tight
+        tpl.content.querySelectorAll('li').forEach(function (li) {
+            const first = li.firstElementChild;
+            if (first && first.nodeName === 'P' && li.querySelectorAll(':scope > p').length === 1) {
+                while (first.firstChild) li.insertBefore(first.firstChild, first);
+                first.remove();
+            }
+        });
+        tpl.content.querySelectorAll('table').forEach(function (table) {
+            table.querySelectorAll('colgroup').forEach(function (cg) { cg.remove(); });
+            table.querySelectorAll('th, td').forEach(function (cell) {
+                const ps = cell.querySelectorAll(':scope > p');
+                if (ps.length === 1 && cell.children.length === 1) {
+                    while (ps[0].firstChild) cell.insertBefore(ps[0].firstChild, ps[0]);
+                    ps[0].remove();
+                }
+            });
+            // first row of header cells without a <thead>: move it into one
+            const firstRow = table.querySelector('tr');
+            if (firstRow && !table.querySelector('thead') && firstRow.children.length
+                && Array.from(firstRow.children).every(function (c) { return c.nodeName === 'TH'; })) {
+                const thead = table.ownerDocument.createElement('thead');
+                table.insertBefore(thead, table.firstChild);
+                thead.appendChild(firstRow);
+            }
+        });
+        return tpl.innerHTML;
     }
 
     function addCalloutRule(td) {
@@ -347,8 +400,111 @@
         });
     }
 
+    /* ---------------- GLPI 12 knowledge base (Tiptap) ----------------
+     * GLPI 12 replaced TinyMCE with a Tiptap editor on KB articles and saves
+     * them over AJAX. Markdown mode swaps the editor for a textarea and pushes
+     * the rendered HTML into Tiptap, so GLPI's own Save/Add buttons save it.
+     * The markdown is re-derived from the saved HTML when the article is reopened.
+     */
+    const tiptapStates = new WeakMap();
+
+    function getTiptapEditors() {
+        return Array.from(document.querySelectorAll('.ProseMirror'))
+            .map(function (el) { return el.editor; })
+            .filter(function (ed) {
+                return ed && ed.commands && typeof ed.getHTML === 'function'
+                    && ed.view && ed.view.dom && ed.view.dom.isConnected;
+            });
+    }
+
+    function syncTiptap(st) {
+        if (!st.textarea) return;
+        clearTimeout(st.timer);
+        st.editor.commands.setContent(markdownToHtml(st.textarea.value));
+    }
+
+    function enableTiptap(st) {
+        if (st.textarea) return;
+        const md = htmlToMarkdown(st.editor.getHTML());
+        const ta = document.createElement('textarea');
+        ta.className = 'form-control markdown-textarea';
+        ta.spellcheck = false;
+        ta.rows = Math.max(12, Math.min(40, md.split('\n').length + 3));
+        ta.value = md;
+        ta.setAttribute('aria-label', 'Markdown');
+        ta.addEventListener('input', function () {
+            clearTimeout(st.timer);
+            st.timer = setTimeout(function () { syncTiptap(st); }, 300);
+        });
+        st.container.style.display = 'none';
+        st.container.parentNode.insertBefore(ta, st.container.nextSibling);
+        st.textarea = ta;
+        st.help.style.display = '';
+        st.checkbox.checked = true;
+    }
+
+    function disableTiptap(st) {
+        if (!st.textarea) return;
+        syncTiptap(st);
+        st.textarea.remove();
+        st.textarea = null;
+        st.container.style.display = '';
+        st.help.style.display = 'none';
+        st.checkbox.checked = false;
+    }
+
+    function attachTiptap(editor) {
+        let st = tiptapStates.get(editor);
+
+        // Article left edit mode (saved / cancelled): put the normal view back.
+        if (!editor.isEditable) {
+            if (st) {
+                if (st.textarea) { st.textarea.remove(); st.textarea = null; }
+                st.container.style.display = '';
+                st.bar.remove();
+                document.removeEventListener('click', st.onClick, true);
+                tiptapStates.delete(editor);
+            }
+            return;
+        }
+        if (st || !librariesReady()) return;
+
+        const container = editor.view.dom.closest('#kb-tiptap-editor, .rich_text_container') || editor.view.dom.parentNode;
+        if (!container || !container.parentNode) return;
+
+        const uid = 'memarkdown-' + (++counter);
+        const bar = document.createElement('div');
+        bar.className = 'markdown-toggle-container';
+        bar.innerHTML =
+            '<div class="form-check form-switch markdown-switch mb-0">' +
+            '  <input class="form-check-input" type="checkbox" id="' + uid + '">' +
+            '  <label class="form-check-label" for="' + uid + '"><i class="ti ti-markdown"></i> Markdown</label>' +
+            '</div>' +
+            '<small class="markdown-help text-muted" style="display:none">' +
+            '**bold** · *italic* · # heading · [link](url) · `code` · ```lang fenced``` · - list · 1. list · &gt; quote · | tables | · ---' +
+            '</small>';
+        container.parentNode.insertBefore(bar, container);
+
+        st = {
+            editor: editor, container: container, bar: bar, textarea: null, timer: null,
+            checkbox: bar.querySelector('input'), help: bar.querySelector('.markdown-help'),
+        };
+        // Flush pending markdown before GLPI reads the editor (Save, Add article...).
+        st.onClick = function (e) {
+            if (st.textarea && e.target.closest('button, [role="button"], a.btn')) syncTiptap(st);
+        };
+        document.addEventListener('click', st.onClick, true);
+        st.checkbox.addEventListener('change', function () {
+            if (this.checked) { enableTiptap(st); } else { disableTiptap(st); }
+        });
+        tiptapStates.set(editor, st);
+
+        if (DEFAULT_ON) enableTiptap(st);
+    }
+
     function scan() {
         getEditors().forEach(attach);
+        getTiptapEditors().forEach(attachTiptap);
     }
 
     function boot() {

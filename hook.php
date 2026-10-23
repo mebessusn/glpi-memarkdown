@@ -148,7 +148,13 @@ function plugin_memarkdown_post_item_form(array $params)
             array_key_exists($field, $item->fields)
             && hash_equals((string) $row['html_hash'], plugin_memarkdown_hash($item->fields[$field]))
         ) {
-            $sources[$field] = (string) $row['markdown'];
+            $markdown = (string) $row['markdown'];
+            // GLPI 10 HTML-encodes every input value (and stores it that way),
+            // so "> quote" was saved as "&#62; quote". Restore what was typed.
+            if (version_compare(GLPI_VERSION, '11.0.0', '<') && class_exists('Glpi\\Toolbox\\Sanitizer')) {
+                $markdown = \Glpi\Toolbox\Sanitizer::decodeHtmlSpecialChars($markdown);
+            }
+            $sources[$field] = $markdown;
         }
     }
     if ($sources === []) {

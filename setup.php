@@ -17,9 +17,9 @@
  * ---------------------------------------------------------------------
  */
 
-define('PLUGIN_MEMARKDOWN_VERSION', '2.1.0');
+define('PLUGIN_MEMARKDOWN_VERSION', '2.2.0');
 define('PLUGIN_MEMARKDOWN_MIN_GLPI', '10.0.0');
-define('PLUGIN_MEMARKDOWN_MAX_GLPI', '12.0.0');
+define('PLUGIN_MEMARKDOWN_MAX_GLPI', '13.0.0');
 
 /**
  * Item types whose rich-text markdown source is remembered between edits.

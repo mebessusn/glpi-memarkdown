@@ -65,13 +65,28 @@
     background: transparent;
 }
 
-/* One-click copy on code blocks */
+/* One-click copy on code blocks.
+   The block is only as wide as its code, plus a gutter on the right for the
+   Copy button. Long lines stop at the page width and scroll sideways inside
+   the block; the button stays in its gutter and never covers the code. */
 .memd-code-wrap {
     position: relative;
+    width: fit-content;
+    min-width: 12rem;
+    max-width: 100%;
+    margin: 0 0 1rem;
+    padding-right: 5.25rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--tblr-body-color, #1d273b) 8%, transparent);
+    border: 1px solid var(--tblr-border-color, rgba(127, 127, 127, .25));
 }
 
 .memd-code-wrap > pre {
-    padding-right: 5.5rem;
+    margin: 0;
+    padding-right: .75rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 
 .memd-copy-btn {

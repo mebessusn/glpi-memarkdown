@@ -17,7 +17,7 @@
  * ---------------------------------------------------------------------
  */
 
-define('PLUGIN_MEMARKDOWN_VERSION', '2.2.0');
+define('PLUGIN_MEMARKDOWN_VERSION', '2.2.1');
 define('PLUGIN_MEMARKDOWN_MIN_GLPI', '10.0.0');
 define('PLUGIN_MEMARKDOWN_MAX_GLPI', '13.0.0');
 

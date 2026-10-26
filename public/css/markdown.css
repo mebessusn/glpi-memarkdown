@@ -119,6 +119,14 @@
 }
 
 
+/* Callouts are as wide as their text (with a sensible minimum), not the whole
+   page. Applies to callouts already saved in articles too. */
+.memd-callout {
+    width: fit-content;
+    min-width: 18rem;
+    max-width: 100%;
+}
+
 /* Callouts: > [!summary] Title  (Obsidian) / > [!NOTE] (GitHub)
    Icons use GLPI's own bundled Tabler icon font (served locally by GLPI, no network). */
 .memd-callout > .memd-callout-title::before {

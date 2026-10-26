@@ -107,7 +107,8 @@
             box.className = 'memd-callout memd-callout-' + def.type;
             box.setAttribute('style',
                 'border-left: 4px solid ' + def.color + '; background: ' + hexToRgba(def.color, 0.1) + ';' +
-                ' border-radius: 4px; padding: .6rem .9rem; margin: 0 0 1rem;');
+                ' border-radius: 4px; padding: .6rem .9rem; margin: 0 0 1rem;' +
+                ' width: fit-content; min-width: 18rem; max-width: 100%;');
             if (fold === '+') box.setAttribute('open', 'open');
 
             const title = doc.createElement(fold ? 'summary' : 'p');

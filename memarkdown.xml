@@ -1,0 +1,59 @@
+<root>
+   <name>Minimal Effort Markdown</name>
+   <key>memarkdown</key>
+   <state>stable</state>
+   <logo>https://raw.githubusercontent.com/mebessusn/glpi-memarkdown/main/memarkdown.png</logo>
+   <description>
+      <short>
+         <en>Write in Markdown in every GLPI rich-text editor: knowledge base, tickets, followups, tasks, solutions. Tables, code blocks with a Copy button, callouts. Works fully air-gapped.</en>
+      </short>
+      <long>
+         <en>
+Adds a **Markdown** switch above every rich-text editor in GLPI, on by default:
+knowledge base articles and translations, ticket / problem / change descriptions,
+followups, tasks, solutions, validations and reminders.
+
+- **GitHub-flavored Markdown**: headings, lists, task lists, tables, fenced code blocks with a language, quotes, links, images.
+- **Your Markdown is kept**: reopening an item shows the exact text you wrote. If someone edits it in the rich-text editor, it is converted back to Markdown.
+- **Callouts**: Obsidian `> [!warning] Title` (all Obsidian types, foldable with `[!type]-`) and GitHub `> [!NOTE]` alerts.
+- **One-click Copy button** on code blocks, also on plain-HTTP intranet servers.
+- **Fully air-gapped**: no CDN, no external requests, no build step. Libraries (marked, turndown) are bundled.
+- The rendered HTML is stored in GLPI's own fields, so content still displays normally if the plugin is disabled.
+
+Works on GLPI 10.0, 11.0 and 12.0 from one package. On GLPI 12 the new knowledge base editor is supported too.
+         </en>
+      </long>
+   </description>
+   <homepage>https://github.com/mebessusn/glpi-memarkdown</homepage>
+   <download>https://github.com/mebessusn/glpi-memarkdown/releases</download>
+   <issues>https://github.com/mebessusn/glpi-memarkdown/issues</issues>
+   <readme>https://github.com/mebessusn/glpi-memarkdown/blob/main/README.md</readme>
+   <authors>
+      <author>Megan Bess</author>
+      <author>HellrazorX64 (original plugin)</author>
+   </authors>
+   <versions>
+      <version>
+         <num>2.2.2</num>
+         <compatibility>~10.0 || ~11.0 || ~12.0</compatibility>
+         <download_url>https://github.com/mebessusn/glpi-memarkdown/releases/download/v2.2.2/memarkdown-2.2.2.tar.gz</download_url>
+      </version>
+   </versions>
+   <langs>
+      <lang>en_GB</lang>
+   </langs>
+   <license>MIT</license>
+   <tags>
+      <en>
+         <tag>markdown</tag>
+         <tag>editor</tag>
+         <tag>knowledge base</tag>
+         <tag>tickets</tag>
+         <tag>documentation</tag>
+      </en>
+   </tags>
+   <screenshots>
+      <screenshot>https://raw.githubusercontent.com/mebessusn/glpi-memarkdown/main/screenshots/editor.png</screenshot>
+      <screenshot>https://raw.githubusercontent.com/mebessusn/glpi-memarkdown/main/screenshots/article.png</screenshot>
+   </screenshots>
+</root>

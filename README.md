@@ -4,6 +4,10 @@
 
 Write in Markdown anywhere GLPI has a rich-text editor.
 
+![Markdown mode in the GLPI editor](screenshots/editor.png)
+
+![Rendered article: callouts, code blocks with Copy, tables](screenshots/article.png)
+
 ## Compatibility
 
 One download works on all supported GLPI versions:

@@ -11,6 +11,40 @@
  */
 
 const PLUGIN_MEMARKDOWN_TABLE = 'glpi_plugin_memarkdown_sources';
+/** Larger sources are not kept (the rendered HTML is still saved by GLPI). */
+const PLUGIN_MEMARKDOWN_MAX_SOURCE = 1048576;
+
+/**
+ * Rich-text fields whose markdown source may be stored, per itemtype.
+ *
+ * @return string[]
+ */
+function plugin_memarkdown_fields(string $itemtype): array
+{
+    switch ($itemtype) {
+        case 'KnowbaseItem':
+        case 'KnowbaseItemTranslation':
+            return ['answer'];
+        case 'Reminder':
+            return ['text'];
+        case 'TicketValidation':
+        case 'ChangeValidation':
+            return ['comment_submission', 'comment_validation'];
+        default: // tickets, problems, changes, followups, tasks, solutions
+            return ['content'];
+    }
+}
+
+/** $DB->doQuery() only exists since GLPI 10.0.11. */
+function plugin_memarkdown_query(string $sql): void
+{
+    global $DB;
+    if (method_exists($DB, 'doQuery')) {
+        $DB->doQuery($sql);
+    } else {
+        $DB->query($sql);
+    }
+}
 
 function plugin_memarkdown_install()
 {
@@ -22,7 +56,7 @@ function plugin_memarkdown_install()
         $sign      = method_exists('DBConnection', 'getDefaultPrimaryKeySignOption') ? DBConnection::getDefaultPrimaryKeySignOption() : '';
         $table     = PLUGIN_MEMARKDOWN_TABLE;
 
-        $DB->doQuery("CREATE TABLE `$table` (
+        plugin_memarkdown_query("CREATE TABLE `$table` (
             `id` int {$sign} NOT NULL AUTO_INCREMENT,
             `itemtype` varchar(100) NOT NULL,
             `items_id` int {$sign} NOT NULL DEFAULT 0,
@@ -42,7 +76,7 @@ function plugin_memarkdown_uninstall()
     global $DB;
 
     if ($DB->tableExists(PLUGIN_MEMARKDOWN_TABLE)) {
-        $DB->doQuery('DROP TABLE `' . PLUGIN_MEMARKDOWN_TABLE . '`');
+        plugin_memarkdown_query('DROP TABLE `' . PLUGIN_MEMARKDOWN_TABLE . '`');
     }
     return true;
 }
@@ -59,10 +93,27 @@ function plugin_memarkdown_hash($html): string
     return md5(trim($html));
 }
 
+function plugin_memarkdown_item_added(CommonDBTM $item)
+{
+    // fields given on creation
+    plugin_memarkdown_item_saved($item, array_keys(is_array($item->input) ? $item->input : []));
+}
+
+function plugin_memarkdown_item_updated(CommonDBTM $item)
+{
+    // only fields whose value actually changed in this update
+    plugin_memarkdown_item_saved($item, is_array($item->updates ?? null) ? $item->updates : []);
+}
+
 /**
- * item_add / item_update: store (or forget) the markdown source posted by the editor.
+ * Store (or forget) the markdown source posted by the editor.
+ *
+ * A source is only accepted for an allow-listed rich-text field that is part of
+ * this save: it describes the HTML being saved now, never HTML someone else wrote.
+ *
+ * @param string[] $changed fields written by this add / update
  */
-function plugin_memarkdown_item_saved(CommonDBTM $item)
+function plugin_memarkdown_item_saved(CommonDBTM $item, array $changed = [])
 {
     global $DB;
 
@@ -78,10 +129,15 @@ function plugin_memarkdown_item_saved(CommonDBTM $item)
         return;
     }
 
+    $allowed = plugin_memarkdown_fields($item->getType());
     foreach ($item->input['_memarkdown_source'] as $field => $markdown) {
         $field = (string) $field;
-        if (!preg_match('/^[a-z0-9_]+$/i', $field)) {
-            continue;
+        if (
+            !in_array($field, $allowed, true)
+            || !in_array($field, $changed, true)
+            || !$DB->fieldExists($item->getTable(), $field)
+        ) {
+            continue; // field untouched by this save: keep what is stored
         }
         $where = [
             'itemtype' => $item->getType(),
@@ -89,15 +145,26 @@ function plugin_memarkdown_item_saved(CommonDBTM $item)
             'field'    => $field,
         ];
 
-        $markdown = (string) $markdown;
-        if ($markdown === '' || !array_key_exists($field, $item->fields)) {
+        $markdown = is_string($markdown) ? $markdown : '';
+        if ($markdown === '' || strlen($markdown) > PLUGIN_MEMARKDOWN_MAX_SOURCE) {
             $DB->delete(PLUGIN_MEMARKDOWN_TABLE, $where);
+            continue;
+        }
+
+        // Hash the value as stored in the database (on GLPI 10 $item->fields
+        // still holds the SQL-escaped input after an update).
+        $saved = $DB->request([
+            'SELECT' => [$field],
+            'FROM'   => $item->getTable(),
+            'WHERE'  => ['id' => $items_id],
+        ])->current();
+        if ($saved === null) {
             continue;
         }
 
         $DB->updateOrInsert(PLUGIN_MEMARKDOWN_TABLE, [
             'markdown'  => $markdown,
-            'html_hash' => plugin_memarkdown_hash($item->fields[$field]),
+            'html_hash' => plugin_memarkdown_hash($saved[$field]),
             'date_mod'  => date('Y-m-d H:i:s'),
         ] + $where, $where);
     }
@@ -130,6 +197,10 @@ function plugin_memarkdown_post_item_form(array $params)
     if (!in_array($item->getType(), plugin_memarkdown_itemtypes(), true)) {
         return;
     }
+    // the source is only needed to edit the item: not sent to read-only viewers
+    if (!$item->canUpdateItem()) {
+        return;
+    }
     if (!$DB->tableExists(PLUGIN_MEMARKDOWN_TABLE)) {
         return;
     }
@@ -145,7 +216,8 @@ function plugin_memarkdown_post_item_form(array $params)
     foreach ($rows as $row) {
         $field = $row['field'];
         if (
-            array_key_exists($field, $item->fields)
+            in_array($field, plugin_memarkdown_fields($item->getType()), true)
+            && array_key_exists($field, $item->fields)
             && hash_equals((string) $row['html_hash'], plugin_memarkdown_hash($item->fields[$field]))
         ) {
             $markdown = (string) $row['markdown'];

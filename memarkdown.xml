@@ -34,6 +34,11 @@ Works on GLPI 10.0, 11.0 and 12.0 from one package. On GLPI 12 the new knowledge
    </authors>
    <versions>
       <version>
+         <num>2.2.3</num>
+         <compatibility>~10.0 || ~11.0 || ~12.0</compatibility>
+         <download_url>https://github.com/mebessusn/glpi-memarkdown/releases/download/v2.2.3/memarkdown-2.2.3.tar.gz</download_url>
+      </version>
+      <version>
          <num>2.2.2</num>
          <compatibility>~10.0 || ~11.0 || ~12.0</compatibility>
          <download_url>https://github.com/mebessusn/glpi-memarkdown/releases/download/v2.2.2/memarkdown-2.2.2.tar.gz</download_url>

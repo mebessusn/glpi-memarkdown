@@ -42,6 +42,50 @@
         return renderCallouts(html);
     }
 
+    /**
+     * True when converting this HTML to markdown would lose something markdown
+     * cannot express: user mentions (their notifications), colours, alignment,
+     * underline, image sizes, merged cells... Such content starts in rich-text mode.
+     * Inline styles of the plugin's own callouts don't count.
+     */
+    function isLossy(html) {
+        if (!html || html.indexOf('<') === -1) return false;
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        const root = tpl.content;
+        if (root.querySelector('[data-user-mention], u, font, s, sub, sup, iframe, video, audio, [align], [color]')) return true;
+        if (root.querySelector('td[colspan]:not([colspan="1"]), th[colspan]:not([colspan="1"]), td[rowspan]:not([rowspan="1"]), th[rowspan]:not([rowspan="1"])')) return true;
+        if (root.querySelector('img[width], img[height]')) return true;
+        return Array.from(root.querySelectorAll('[style]')).some(function (el) {
+            if (el.closest('.memd-callout')) return false;
+            // harmless: column widths the editors add to tables, "margin-bottom: 0"
+            const tableEl = /^(TABLE|COLGROUP|COL|TR|TH|TD)$/.test(el.nodeName);
+            return el.getAttribute('style').split(';').some(function (decl) {
+                const prop = decl.split(':')[0].trim().toLowerCase();
+                if (prop === '') return false;
+                if (tableEl && (prop === 'width' || prop === 'min-width')) return false;
+                return !(prop === 'margin-bottom' && /:\s*0(px)?\s*$/i.test(decl));
+            });
+        });
+    }
+
+    /**
+     * What a reader sees of some HTML: its text plus every link and image target.
+     * A stored markdown source is only trusted when it renders to the same thing as
+     * the field's saved HTML, so a source planted through the API or a crafted form
+     * cannot replace what the next editor saves.
+     */
+    function signature(html) {
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html || '';
+        const root = tpl.content;
+        const text = (root.textContent || '').replace(/[\s\u00a0\u200b]+/g, '');
+        const refs = Array.from(root.querySelectorAll('a[href], img[src]')).map(function (el) {
+            return el.getAttribute('href') || el.getAttribute('src');
+        });
+        return text + '\n' + refs.join('\n');
+    }
+
     /* ---------------- callouts (Obsidian / GitHub alert syntax) ----------------
      * > [!summary] Optional title          > [!NOTE]
      * > Body text                           > Body text
@@ -301,7 +345,9 @@
         const container = editor.getContainer();
         const uid = 'memarkdown-' + (++counter);
 
-        const st = { enabled: false, textarea: null, timer: null };
+        // dirty: the markdown was edited. Untouched content is never re-rendered, so
+        // saving a form for another field cannot rewrite rich text.
+        const st = { enabled: false, textarea: null, timer: null, dirty: false, fromSource: false };
 
         // toggle bar
         const bar = document.createElement('div');
@@ -344,6 +390,7 @@
             ta.value = md;
             ta.setAttribute('aria-label', 'Markdown');
             ta.addEventListener('input', function () {
+                st.dirty = true;
                 clearTimeout(st.timer);
                 st.timer = setTimeout(sync, 300);
             });
@@ -351,7 +398,8 @@
             container.parentNode.insertBefore(ta, container.nextSibling);
             st.textarea = ta;
 
-            hidden.value = md;
+            // keep a verified source as is; a converted one is only sent once edited
+            hidden.value = st.fromSource ? md : '';
             help.style.display = '';
             checkbox.checked = true;
         }
@@ -359,8 +407,10 @@
         function disable() {
             if (!st.enabled) return;
             clearTimeout(st.timer);
-            sync();
+            if (st.dirty) sync();
             st.enabled = false;
+            st.dirty = false;
+            st.fromSource = false;
             st.textarea.remove();
             st.textarea = null;
             hidden.value = '';
@@ -370,7 +420,7 @@
         }
 
         function beforeSubmit() {
-            if (!st.enabled) return;
+            if (!st.enabled || !st.dirty) return;
             clearTimeout(st.timer);
             sync();
         }
@@ -388,9 +438,11 @@
         }, true);
 
         const source = storedSource(form, field);
-        if (source !== null) {
+        const current = editor.getContent();
+        if (source !== null && signature(markdownToHtml(source)) === signature(current)) {
+            st.fromSource = true;
             enable(source);
-        } else if (DEFAULT_ON) {
+        } else if (DEFAULT_ON && !isLossy(current)) {
             enable();
         }
 
@@ -419,7 +471,7 @@
     }
 
     function syncTiptap(st) {
-        if (!st.textarea) return;
+        if (!st.textarea || !st.dirty) return;
         clearTimeout(st.timer);
         st.editor.commands.setContent(markdownToHtml(st.textarea.value));
     }
@@ -434,6 +486,7 @@
         ta.value = md;
         ta.setAttribute('aria-label', 'Markdown');
         ta.addEventListener('input', function () {
+            st.dirty = true;
             clearTimeout(st.timer);
             st.timer = setTimeout(function () { syncTiptap(st); }, 300);
         });
@@ -449,6 +502,7 @@
         syncTiptap(st);
         st.textarea.remove();
         st.textarea = null;
+        st.dirty = false;
         st.container.style.display = '';
         st.help.style.display = 'none';
         st.checkbox.checked = false;
@@ -487,7 +541,7 @@
         container.parentNode.insertBefore(bar, container);
 
         st = {
-            editor: editor, container: container, bar: bar, textarea: null, timer: null,
+            editor: editor, container: container, bar: bar, textarea: null, timer: null, dirty: false,
             checkbox: bar.querySelector('input'), help: bar.querySelector('.markdown-help'),
         };
         // Flush pending markdown before GLPI reads the editor (Save, Add article...).
@@ -500,7 +554,7 @@
         });
         tiptapStates.set(editor, st);
 
-        if (DEFAULT_ON) enableTiptap(st);
+        if (DEFAULT_ON && !isLossy(editor.getHTML())) enableTiptap(st);
     }
 
     function scan() {

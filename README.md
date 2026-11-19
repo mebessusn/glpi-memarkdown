@@ -20,9 +20,10 @@ One download works on all supported GLPI versions:
 
 ## Features
 
-- **Markdown toggle on every rich-text editor**, ON by default: KB articles and translations, ticket/change/problem descriptions, followups, tasks, solutions, validations and reminders. It works for new items and when editing existing ones.
+- **Markdown toggle on every rich-text editor**, ON by default: KB articles and translations, ticket/change/problem descriptions, followups, tasks, solutions, validations and reminders. It works for new items and when editing existing ones. Existing content with formatting markdown can't express (colours, underline, @mentions, merged table cells, sized images) opens in the rich-text editor instead, so it is never flattened.
+- **Nothing is rewritten unless you edit it.** Saving a form without typing in the markdown box leaves the stored HTML exactly as it was.
 - **GitHub-flavored Markdown**: tables, fenced code blocks with a language (```` ```bash ````), blockquotes, `---` rules, nested lists, task lists. Rendering uses [marked](https://github.com/markedjs/marked).
-- **Your markdown is kept.** The exact text you wrote is stored, so reopening an item shows your original markdown, not a re-conversion. If someone later edits the item in the rich-text editor, the plugin converts the current HTML back to markdown with [turndown](https://github.com/mixmark-io/turndown).
+- **Your markdown is kept.** The exact text you wrote is stored, so reopening an item shows your original markdown, not a re-conversion. If someone later edits the item in the rich-text editor, the plugin converts the current HTML back to markdown with [turndown](https://github.com/mixmark-io/turndown). A stored source is only used when it still renders to the item's saved content.
 - **Callouts**: Obsidian `> [!summary] Title` (all Obsidian types, foldable with `[!type]-` / `[!type]+`) and GitHub `> [!NOTE]` alerts.
 - **One-click Copy button** on every code block in KB articles and the ticket timeline. It also works on plain-HTTP intranet servers.
 - **Fully air-gapped**: no build step, no composer/npm, no CDN, no web fonts. Libraries are bundled in `public/js/vendor`; icons use the Tabler icon font GLPI already ships. Tested with every non-GLPI request blocked: zero attempted.

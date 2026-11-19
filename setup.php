@@ -17,7 +17,7 @@
  * ---------------------------------------------------------------------
  */
 
-define('PLUGIN_MEMARKDOWN_VERSION', '2.2.2');
+define('PLUGIN_MEMARKDOWN_VERSION', '2.2.3');
 define('PLUGIN_MEMARKDOWN_MIN_GLPI', '10.0.0');
 define('PLUGIN_MEMARKDOWN_MAX_GLPI', '13.0.0');
 
@@ -64,12 +64,8 @@ function plugin_init_memarkdown()
         ];
     }
 
-    $hooked = [];
-    foreach (plugin_memarkdown_itemtypes() as $itemtype) {
-        $hooked[$itemtype] = 'plugin_memarkdown_item_saved';
-    }
-    $PLUGIN_HOOKS['item_add']['memarkdown']    = $hooked;
-    $PLUGIN_HOOKS['item_update']['memarkdown'] = $hooked;
+    $PLUGIN_HOOKS['item_add']['memarkdown']    = array_fill_keys(plugin_memarkdown_itemtypes(), 'plugin_memarkdown_item_added');
+    $PLUGIN_HOOKS['item_update']['memarkdown'] = array_fill_keys(plugin_memarkdown_itemtypes(), 'plugin_memarkdown_item_updated');
 
     $purge = [];
     foreach (plugin_memarkdown_itemtypes() as $itemtype) {
